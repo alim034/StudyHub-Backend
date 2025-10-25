@@ -60,7 +60,9 @@ async function connectToMongoDB() {
         import('./jobs/reminderScheduler.js').catch((err) => console.error('Failed to load reminderScheduler', err));
         import('./jobs/invitationCleaner.js').catch((err) => console.error('Failed to load invitationCleaner', err));
     } catch (err) {
-        console.error('Failed to connect to MongoDB:', err);
+    console.error('Failed to connect to MongoDB:', err);
+    // Rethrow so the request middleware can return 503 immediately
+    throw err;
     }   
 }
 
@@ -70,10 +72,14 @@ const app = express();
 // NOTE: this must run after `app` exists (moved here to avoid
 // "Cannot access 'app' before initialization" errors during startup).
 app.use(async (req, res, next) => {
-    if (!isConnected) {
-        await connectToMongoDB();
+  if (!isConnected) {
+    try {
+      await connectToMongoDB();
+    } catch (e) {
+      return res.status(503).json({ error: 'Database connection failed', details: e?.message || 'Unavailable' });
     }
-    next();
+  }
+  next();
 });
 
 // --- 1. Centralized CORS Configuration ---
