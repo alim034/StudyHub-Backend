@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import { sendEmail, sendPush } from '../utils/notify.js';
 import fs from 'fs';
 import path from 'path';
+import { uploadDir } from '../middlewares/uploadMiddleware.js';
 
 // Upload resources
 export const uploadResources = async (req, res) => {
@@ -78,9 +79,10 @@ export const uploadNewVersion = async (req, res) => {
     const resource = await Resource.findById(req.params.resourceId);
     if (!resource) return res.status(404).json({ error: 'Resource not found' });
 
-    // Remove old file
-    const oldPath = path.join(process.cwd(), 'public', resource.url);
-    if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+  // Remove old file (use configured upload dir)
+  const oldFileName = path.basename(resource.url || '');
+  const oldPath = path.join(uploadDir, oldFileName);
+  if (oldFileName && fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
 
     resource.name = file.originalname;
     resource.url = `/uploads/${file.filename}`;
@@ -106,8 +108,10 @@ export const deleteResource = async (req, res) => {
       return res.status(403).json({ error: 'Not authorized' });
 
     // Remove file
-    const filePath = path.join(process.cwd(), 'public', resource.url);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  // Remove file from configured upload directory
+  const fileName = path.basename(resource.url || '');
+  const filePath = path.join(uploadDir, fileName);
+  if (fileName && fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
     await resource.deleteOne();
     res.json({ message: 'Resource deleted' });

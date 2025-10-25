@@ -24,6 +24,7 @@ import { authMiddleware } from './middlewares/authMiddleware.js';
 import { socketAuthMiddleware } from './middlewares/socketAuthMiddleware.js';
 import initializeSocket from './socketHandler.js';
 import resourceRoutes from './routes/resourceRoutes.js';
+import { uploadDir } from './middlewares/uploadMiddleware.js';
 import videoRoutes from './routes/videoRoutes.js';
 import contactRoutes from './routes/contactRoutes.js'; // ✅ CHANGED: Use import instead of require
 
@@ -63,16 +64,17 @@ async function connectToMongoDB() {
     }   
 }
 
-// add middle ware
+const app = express();
+
+// add middleware: ensure DB connection before handling requests
+// NOTE: this must run after `app` exists (moved here to avoid
+// "Cannot access 'app' before initialization" errors during startup).
 app.use(async (req, res, next) => {
     if (!isConnected) {
         await connectToMongoDB();
-    }       
+    }
     next();
-})
-
-
-const app = express();
+});
 
 // --- 1. Centralized CORS Configuration ---
 const corsOptions = {
@@ -85,8 +87,10 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static uploads so profile images and other files are accessible
-app.use('/uploads', express.static('public/uploads'));
+// Serve static uploads so profile images and other files are accessible.
+// Use the configured uploadDir (may be a tmpdir in production) so we
+// don't attempt to write into the project root on read-only hosts.
+app.use('/uploads', express.static(uploadDir));
 app.use('/public', express.static('public'));
 
 // ✅ FIXED: Use the imported contactRoutes
@@ -136,4 +140,4 @@ initializeSocket(io);
 // server.listen(PORT, () => {
 //     console.log(`Server running on port ${PORT}`);
 // });
-module.exports = app;
+export default app;
