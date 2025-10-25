@@ -76,10 +76,22 @@ app.use(async (req, res, next) => {
     next();
 });
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://study-hub-frontend-ebon.vercel.app"
+];
+
 // --- 1. Centralized CORS Configuration ---
 const corsOptions = {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true,
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn("❌ Blocked by CORS:", origin);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
 };
 
 // --- 2. Apply CORS to Express ---
