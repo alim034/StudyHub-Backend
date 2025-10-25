@@ -76,26 +76,31 @@ app.use(async (req, res, next) => {
     next();
 });
 
+// --- 1. Centralized CORS Configuration ---
 const allowedOrigins = [
-  "http://localhost:5173",
-  "https://study-hub-frontend-ebon.vercel.app"
+  "http://localhost:5173", // for local dev
+  "https://study-hub-frontend-ebon.vercel.app" // for your deployed frontend
 ];
 
-// --- 1. Centralized CORS Configuration ---
 const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn("❌ Blocked by CORS:", origin);
-      callback(new Error("Not allowed by CORS"));
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      console.warn(`❌ CORS BLOCKED: ${origin}`); // You will see this in logs if it fails
+      return callback(new Error(msg), false);
     }
+    
+    return callback(null, true);
   },
   credentials: true,
 };
-
 // --- 2. Apply CORS to Express ---
 app.use(cors(corsOptions));
+
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
